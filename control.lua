@@ -18,7 +18,6 @@ script.on_event(defines.events.on_space_platform_changed_state,
         if not event.platform.surface then return end
         
         local planet_surface = get_planet_surface(event.platform)
-        -- local space_radars = event.platform.surface.find_entities_filtered{name="radar"}
 
         if planet_surface then
             connect_platform(event.platform, planet_surface)
