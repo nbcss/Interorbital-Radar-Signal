@@ -1,6 +1,6 @@
-local planet_radar_connector = {
+local interorbital_radar_connector = {
     type = "radar",
-    name = "planet-radar-connector",
+    name = "interorbital-radar-connector",
     connects_to_other_radars = true,
     energy_usage = "1W",
     energy_per_sector = "1GJ",
@@ -13,4 +13,4 @@ local planet_radar_connector = {
     hidden_in_factoriopedia = true
 }
 
-data:extend{planet_radar_connector}
+data:extend{interorbital_radar_connector}

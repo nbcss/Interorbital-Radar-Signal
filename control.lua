@@ -1,59 +1,45 @@
+-- Initialize platform connections
+script.on_init(
+    function()
+        update_all_platform_connections()
+    end
+)
+
+script.on_configuration_changed(
+    function()
+        update_all_platform_connections()
+    end
+)
+
 -- Update when platform state changed
 script.on_event(defines.events.on_space_platform_changed_state,
-  function(event)
-    -- skip if surface is not generated
-    if not event.platform.surface then return end
-    
-    local planet_surface = get_planet_surface(event.platform)
-    local space_radars = event.platform.surface.find_entities_filtered{name="radar"}
+    function(event)
+        -- skip if surface is not generated
+        if not event.platform.surface then return end
+        
+        local planet_surface = get_planet_surface(event.platform)
+        -- local space_radars = event.platform.surface.find_entities_filtered{name="radar"}
 
-    if planet_surface then
-        -- connect to planet
-        for _, radar in pairs(space_radars) do
-            if radar.status == defines.entity_status.working then
-                connect_to_planet(radar, planet_surface)
-            end
-        end
-    else
-        -- disconnect
-        for _, radar in pairs(space_radars) do
-            reset_radar_connections(radar)
+        if planet_surface then
+            connect_platform(event.platform, planet_surface)
+        else
+            disconnect_platform(event.platform)
         end
     end
-  end
 )
 
--- Update when new radar built
-script.on_event(defines.events.on_space_platform_built_entity,
-  function(event)
-    local planet_surface = get_planet_surface(event.platform)
-    if planet_surface and event.entity.name == "radar" and event.entity.status == defines.entity_status.working then
-        connect_to_planet(event.entity, planet_surface)
-    end
-  end
-)
-
--- Update every 60 tick on platforms
-script.on_nth_tick(60, 
-  function()
+function update_all_platform_connections()
     for _, surface in pairs(game.surfaces) do
         if surface.platform then
             local planet_surface = get_planet_surface(surface.platform)
             if planet_surface then
-                local space_radars = surface.find_entities_filtered{name="radar"}
-                for _, radar in pairs(space_radars) do
-                    if radar.status == defines.entity_status.working then
-                        connect_to_planet(radar, planet_surface)
-                    end
-                    if radar.status ~= defines.entity_status.working then
-                        reset_radar_connections(radar)
-                    end
-                end
+                connect_platform(surface.platform, planet_surface)
+            else
+                disconnect_platform(surface.platform)
             end
         end
     end
-  end
-)
+end
 
 function get_planet_surface(platform)
     local planet_location = platform.space_location
@@ -67,32 +53,57 @@ function get_planet_surface(platform)
     return nil
 end
 
-function connect_to_planet(radar, planet_surface)
-    local planet_radars = planet_surface.find_entities_filtered{name="planet-radar-connector", force=radar.force}
-    local planet_radar_connector = nil
-    if #planet_radars == 0 then
-        planet_radar_connector = planet_surface.create_entity{name="planet-radar-connector", position={x = 0.0, y = 0.0}, force=radar.force}
+function connect_platform(platform, planet_surface)
+    local platform_surface = platform.surface
+    if not platform.surface then return end
+
+    -- init platform radar connector
+    local platform_radar = platform_surface.find_entities_filtered{name="interorbital-radar-connector", force=platform.force}
+    local platform_connector = nil
+    if #platform_radar == 0 then
+        platform_connector = platform_surface.create_entity{name="interorbital-radar-connector", position={x = 0.0, y = 0.0}, force=platform.force}
     else
-        planet_radar_connector = planet_radars[1]
+        platform_connector = platform_radar[1]
     end
-    local red_connector = radar.get_wire_connector(defines.wire_connector_id.circuit_red, true)
-    local green_connector = radar.get_wire_connector(defines.wire_connector_id.circuit_green, true)
-    local planet_red_connector = planet_radar_connector.get_wire_connector(defines.wire_connector_id.circuit_red, true)
-    local planet_green_connector = planet_radar_connector.get_wire_connector(defines.wire_connector_id.circuit_green, true)
+
+    -- init planet radar connector
+    local planet_radar = planet_surface.find_entities_filtered{name="interorbital-radar-connector", force=platform.force}
+    local planet_connector = nil
+    if #planet_radar == 0 then
+        planet_connector = planet_surface.create_entity{name="interorbital-radar-connector", position={x = 0.0, y = 0.0}, force=platform.force}
+    else
+        planet_connector = planet_radar[1]
+    end
+
+    -- connect platform & planet
+    local red_connector = platform_connector.get_wire_connector(defines.wire_connector_id.circuit_red, true)
+    local green_connector = platform_connector.get_wire_connector(defines.wire_connector_id.circuit_green, true)
+    local planet_red_connector = planet_connector.get_wire_connector(defines.wire_connector_id.circuit_red, true)
+    local planet_green_connector = planet_connector.get_wire_connector(defines.wire_connector_id.circuit_green, true)
     red_connector.connect_to(planet_red_connector, false, defines.wire_origin.script)
     green_connector.connect_to(planet_green_connector, false, defines.wire_origin.script)
 end
 
-function reset_radar_connections(radar)
-    local red_connectors = radar.get_wire_connector(defines.wire_connector_id.circuit_red, true)
-    local green_connectors = radar.get_wire_connector(defines.wire_connector_id.circuit_green, true)
+function disconnect_platform(platform)
+    local platform_surface = platform.surface
+    if not platform.surface then return end
+    local platform_radar = platform_surface.find_entities_filtered{name="interorbital-radar-connector", force=platform.force}
+    local platform_connector = nil
+    if #platform_radar == 0 then
+        return
+    else
+        platform_connector = platform_radar[1]
+    end
+
+    local red_connectors = platform_connector.get_wire_connector(defines.wire_connector_id.circuit_red, true)
+    local green_connectors = platform_connector.get_wire_connector(defines.wire_connector_id.circuit_green, true)
     for _, connection in pairs(red_connectors.connections) do
-        if connection.target.owner.surface ~= radar.surface then
+        if connection.target.owner.surface ~= platform.surface then
             red_connectors.disconnect_from(connection.target, defines.wire_origin.script)
         end
     end
     for _, connection in pairs(green_connectors.connections) do
-        if connection.target.owner.surface ~= radar.surface then
+        if connection.target.owner.surface ~= platform.surface then
             green_connectors.disconnect_from(connection.target, defines.wire_origin.script)
         end
     end
