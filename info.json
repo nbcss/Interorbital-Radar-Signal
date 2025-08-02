@@ -1,0 +1,9 @@
+{
+    "name": "interorbital-radar-signal",
+    "version": "1.0.0",
+    "title": "Interorbital Radar Signal",
+    "author": "nbcss, FiveYellowMice",
+    "factorio_version": "2.0",
+    "dependencies": ["base >= 2.0", "space-age"],
+    "description": "Radar on space platform will automatically connects to planet's radar circuit network"
+}
